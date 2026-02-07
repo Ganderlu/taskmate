@@ -3,16 +3,20 @@
 import { useState } from "react";
 import {
   auth,
+  db,
   googleProvider,
   facebookProvider,
 } from "../../firebase/firebaseClient";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
+  updateProfile,
   AuthProvider,
 } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import {
+  User,
   Mail,
   Lock,
   Eye,
@@ -27,6 +31,7 @@ import { useTheme } from "next-themes";
 export default function RegisterPage() {
   const router = useRouter();
   const { theme } = useTheme();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,7 +41,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
       setError("Please fill in all fields.");
       return;
     }
@@ -52,8 +57,28 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // Optional: Update profile with name if we added that field
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const user = userCredential.user;
+
+      // Update profile with name
+      await updateProfile(user, {
+        displayName: name,
+      });
+
+      // Create user document in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: name,
+        photoURL: user.photoURL || "",
+        createdAt: new Date().toISOString(),
+        authProvider: "local",
+      });
+
       router.push("/dashboard/tasks");
     } catch (err: any) {
       console.error("Registration error:", err);
@@ -74,7 +99,23 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Create/Update user document in Firestore
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || "",
+          photoURL: user.photoURL || "",
+          lastLogin: new Date().toISOString(),
+          authProvider: provider.providerId,
+        },
+        { merge: true },
+      );
+
       router.push("/dashboard/tasks");
     } catch (err: any) {
       console.error("Provider register error:", err);
@@ -157,6 +198,27 @@ export default function RegisterPage() {
             )}
 
             <div className="space-y-4">
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  htmlFor="name"
+                >
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all dark:text-white"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label
                   className="text-sm font-medium text-gray-700 dark:text-gray-300"

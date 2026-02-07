@@ -16,6 +16,7 @@ import { useSidebar } from "@/app/dashboard/SidebarContext";
 export default function SidebarProfile() {
   const [darkMode, setDarkMode] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState("/gander.jpg");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +41,7 @@ export default function SidebarProfile() {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         setEmail(user.email);
+        setName(user.displayName);
         if (user.photoURL) {
           setProfileImage(user.photoURL);
         }
@@ -119,7 +121,10 @@ export default function SidebarProfile() {
             onChange={handleImageChange}
           />
 
-          <p className="mt-2 text-gray-500 text-sm">{email || "Loading..."}</p>
+          <p className="mt-2 text-gray-900 dark:text-white font-semibold">
+            {name || "User"}
+          </p>
+          <p className="text-gray-500 text-sm">{email || "Loading..."}</p>
         </div>
 
         {/* Menu groups */}

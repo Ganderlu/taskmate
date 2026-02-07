@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   auth,
+  db,
   googleProvider,
   facebookProvider,
 } from "../../firebase/firebaseClient";
@@ -11,6 +12,7 @@ import {
   signInWithPopup,
   AuthProvider,
 } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -58,7 +60,23 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Create/Update user document in Firestore (idempotent for existing users)
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || "",
+          photoURL: user.photoURL || "",
+          lastLogin: new Date().toISOString(),
+          authProvider: provider.providerId,
+        },
+        { merge: true },
+      );
+
       router.push("/dashboard/tasks");
     } catch (err: any) {
       console.error("Provider login error:", err);

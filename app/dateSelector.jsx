@@ -28,9 +28,11 @@ export default function DateSelector({ selectedDate, onChange }) {
         <button
           key={idx}
           onClick={() => onChange(d.date)}
-          className={`px-4 py-2 rounded-xl text-center border 
-            ${selectedDate === d.date ? "bg-blue-600 text-white" : "bg-gray-100"}
-            ${d.isToday ? "border-blue-600" : "border-transparent"}
+          className={`px-4 py-2 rounded-xl text-center border min-w-[70px] transition-all
+            ${selectedDate === d.date 
+              ? "bg-purple-600 text-white shadow-md shadow-purple-500/20 scale-105" 
+              : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"}
+            ${d.isToday ? "border-purple-600" : "border-gray-100 dark:border-gray-800"}
           `}
         >
           <div className="font-bold">{d.dayNumber}</div>

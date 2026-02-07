@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "../../../firebase/firebaseClient";
+import { auth, db } from "../../../../firebase/firebaseClient";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import {
   Sparkles,
   Upload,
@@ -15,120 +15,127 @@ import {
   Clock,
   Check,
   Loader2,
+  Save,
 } from "lucide-react";
 import dayjs from "dayjs";
 
-export default function NewTaskPage() {
+export default function EditTaskPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  // Unwrap params using React.use()
+  const { id: taskId } = use(params);
+  
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [aiPrompt, setAiPrompt] = useState("");
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
 
   // Form State
   const [title, setTitle] = useState("");
+  const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
+  const [category, setCategory] = useState("Work");
+  const [description, setDescription] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
       if (!currentUser) {
-        // Optional: Redirect to login if needed, or just let the user know
         console.log("No user logged in");
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // Form State
-  const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [startTime, setStartTime] = useState("16:00");
-  const [endTime, setEndTime] = useState("19:00");
-  const [category, setCategory] = useState("Work");
-  const [description, setDescription] = useState("");
-
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) {
-      alert("Please enter a prompt for AI");
-      return;
-    }
-
-    setIsAiGenerating(true);
-    try {
-      const response = await fetch("/api/ai/generate-task", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt: aiPrompt }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate task");
+  // Fetch Task Data
+  useEffect(() => {
+    const fetchTask = async () => {
+      if (!taskId) return;
+      
+      try {
+        const docRef = doc(db, "tasks", taskId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTitle(data.title || "");
+          setDate(data.date || dayjs().format("YYYY-MM-DD"));
+          setStartTime(data.startTime || "09:00");
+          setEndTime(data.endTime || "10:00");
+          setCategory(data.category || "Work");
+          setDescription(data.description || "");
+        } else {
+          alert("Task not found");
+          router.push("/dashboard/tasks");
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
+        alert("Error loading task details");
+      } finally {
+        setInitialLoading(false);
       }
+    };
 
-      if (data.title) setTitle(data.title);
-      if (data.description) setDescription(data.description);
-      if (data.category) setCategory(data.category);
-      if (data.date) setDate(data.date);
-      if (data.startTime) setStartTime(data.startTime);
-      if (data.endTime) setEndTime(data.endTime);
-    } catch (error: any) {
-      console.error("AI Generation Error:", error);
-      if (error.message.includes("API_KEY")) {
-        alert("⚠️ AI Service Not Configured\n\nPlease add your Gemini API Key to the .env.local file to use this feature.");
-      } else {
-        alert(error.message || "Failed to generate task details");
-      }
-    } finally {
-      setIsAiGenerating(false);
-    }
-  };
+    fetchTask();
+  }, [taskId, router]);
 
-  const handleCreateTask = async () => {
+  const handleUpdateTask = async () => {
     if (!title.trim()) {
       alert("Please enter a task title");
       return;
     }
 
-    // Check authentication
     if (!user) {
-      console.error("No authenticated user found");
-      alert("You must be logged in to create a task");
+      alert("You must be logged in to update a task");
       return;
     }
 
     setLoading(true);
     try {
-      console.log("Creating task for user:", user.uid);
-      const taskData = {
+      const taskRef = doc(db, "tasks", taskId);
+      await updateDoc(taskRef, {
         title,
         date,
         startTime,
         endTime,
         category,
         description,
-        userId: user.uid,
-        status: "pending",
-        deleted: false,
-        createdAt: new Date().toISOString(),
-      };
-      console.log("Task data:", taskData);
-
-      const docRef = await addDoc(collection(db, "tasks"), taskData);
-      console.log("Task created with ID:", docRef.id);
+        updatedAt: new Date().toISOString(),
+      });
 
       router.push("/dashboard/tasks");
     } catch (error: any) {
-      console.error("Error creating task:", error);
-      alert(`Failed to create task: ${error.message || "Unknown error"}`);
+      console.error("Error updating task:", error);
+      alert(`Failed to update task: ${error.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this task?")) return;
+    
+    try {
+      setLoading(true);
+      const taskRef = doc(db, "tasks", taskId);
+      await updateDoc(taskRef, { deleted: true }); // Soft delete
+      router.push("/dashboard/tasks");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task");
+      setLoading(false);
+    }
+  };
+
+  if (initialLoading || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto min-h-screen bg-white dark:bg-gray-950 p-6 md:p-10 animate-in fade-in duration-500">
@@ -143,49 +150,27 @@ export default function NewTaskPage() {
           </button>
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
-              Create New Task
+              Edit Task
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Plan your day effectively
+              Update your task details
             </p>
           </div>
         </div>
 
-        {authLoading && (
-          <div className="text-sm text-gray-500 animate-pulse">
-            Checking login status...
-          </div>
-        )}
-
-        {/* AI Input */}
-        <div className="relative w-full md:w-auto md:min-w-[450px] shadow-sm hover:shadow-md transition-shadow duration-300">
+        {/* AI Input (Optional - kept for consistency) */}
+        <div className="relative w-full md:w-auto md:min-w-[450px] opacity-50 pointer-events-none grayscale">
+           {/* Disabled for edit mode to avoid confusion, or could implement AI edit */}
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-600 dark:text-purple-400">
-            <Sparkles size={22} className="animate-pulse" />
+            <Sparkles size={22} />
           </div>
           <input
             type="text"
             value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !isAiGenerating) {
-                handleAiGenerate();
-              }
-            }}
-            placeholder="Ask AI to help plan your task..."
-            className="w-full pl-14 pr-14 py-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-4 focus:ring-purple-100 dark:focus:ring-purple-900/20 focus:border-purple-500/50 outline-none transition-all disabled:opacity-50"
-            disabled={isAiGenerating}
+            disabled
+            placeholder="AI suggestions disabled in edit mode"
+            className="w-full pl-14 pr-14 py-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-gray-400"
           />
-          <button
-            onClick={handleAiGenerate}
-            disabled={isAiGenerating}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
-          >
-            {isAiGenerating ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Upload size={18} />
-            )}
-          </button>
         </div>
       </div>
 
@@ -202,7 +187,6 @@ export default function NewTaskPage() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter task title here..."
             className="w-full py-3 bg-transparent border-b-2 border-gray-200 dark:border-gray-800 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-3xl font-medium text-gray-800 dark:text-white placeholder-gray-300 dark:placeholder-gray-700 transition-colors"
-            autoFocus
           />
         </div>
 
@@ -317,29 +301,29 @@ export default function NewTaskPage() {
           {/* Action Buttons */}
           <div className="lg:col-span-2 flex items-center justify-between pt-8 border-t border-gray-200/50 dark:border-gray-700/50 mt-4">
             <button
-              onClick={() => router.back()}
+              onClick={handleDelete}
               className="flex items-center gap-2 px-8 py-4 bg-white dark:bg-gray-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl font-semibold transition-all hover:shadow-sm group"
             >
               <Trash2
                 size={20}
                 className="group-hover:scale-110 transition-transform"
               />
-              <span>Cancel</span>
+              <span>Delete Task</span>
             </button>
             <button
-              onClick={handleCreateTask}
+              onClick={handleUpdateTask}
               disabled={loading || authLoading || !user}
               className="flex items-center gap-3 px-10 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 hover:-translate-y-1 transition-all disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  <span>Creating...</span>
+                  <span>Updating...</span>
                 </>
               ) : (
                 <>
-                  <Check size={24} />
-                  <span>Create Task</span>
+                  <Save size={24} />
+                  <span>Save Changes</span>
                 </>
               )}
             </button>
