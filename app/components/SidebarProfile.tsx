@@ -132,7 +132,7 @@ export default function SidebarProfile() {
           {/* General */}
           <div>
             <h4 className="text-xs text-gray-400  uppercase mb-2">General</h4>
-            <SidebarItem label="Account" href="/dashboard/tasks" />
+            <SidebarItem label="Account" href="/dashboard" />
             <SidebarItem label="Projects" href="/dashboard/projects" />
             <SidebarItem label="Notifications" href="/" />
             <SidebarItem label="Saved to Cloud" href="/" />

@@ -79,7 +79,7 @@ export default function RegisterPage() {
         authProvider: "local",
       });
 
-      router.push("/dashboard/tasks");
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("Registration error:", err);
       let errorMessage = "Failed to create account.";

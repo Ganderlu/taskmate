@@ -38,7 +38,7 @@ export default function LoginPage() {
     setError("");
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard/tasks");
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("Login error:", err);
       let errorMessage = "Failed to sign in. Please check your credentials.";
@@ -77,7 +77,7 @@ export default function LoginPage() {
         { merge: true },
       );
 
-      router.push("/dashboard/tasks");
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("Provider login error:", err);
       setError("Failed to sign in with provider. " + err.message);
