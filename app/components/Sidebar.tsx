@@ -80,7 +80,14 @@ export default function Sidebar() {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Tasks", href: "/dashboard/tasks", icon: CheckSquare },
     { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+    { label: "Notifications", href: "/dashboard/notifications", icon: FolderKanban },
+    { label: "Saved to cloud", href: "/dashboard/cloud", icon: FolderKanban },
     { label: "Set up your Team", href: "/dashboard/team", icon: Users },
+    { label: "Allow Team edit", href: "/dashboard/teamEdit", icon: Users },
+    { label: "Storage and Data", href: "/dashboard/storage", icon: Users },
+    { label: "Help and feedback", href: "/dashboard/feedback", icon: Users },
+    { label: "Privacy", href: "/dashboard/privacy", icon: Users },
+    { label: "Invite a friend", href: "/dashboard/invite", icon: Users },
     { label: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 

@@ -26,9 +26,11 @@ import {
   Loader2,
   Edit,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import DateSelector from "../../dateSelector";
 import Link from "next/link";
+import VoiceCommand from "../../../components/VoiceCommand";
 
 interface Task {
   id: string;
@@ -42,10 +44,13 @@ interface Task {
   priority?: "low" | "medium" | "high";
   deleted?: boolean;
   category?: string;
+  reasoning?: string;
 }
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isPrioritizing, setIsPrioritizing] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(
     dayjs().format("YYYY-MM-DD"),
   );
@@ -142,6 +147,232 @@ export default function TasksPage() {
     return () => unsubscribe();
   }, [selectedDate]);
 
+  const handlePrioritize = async () => {
+    if (tasks.length === 0) return;
+
+    setIsPrioritizing(true);
+    try {
+      const response = await fetch("/api/ai/prioritize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks }),
+      });
+
+      const data = await response.json();
+      if (data.tasks) {
+        // Update local state with new priorities and order
+        // Create a map for O(1) lookup
+        const prioritizedMap = new Map(data.tasks.map((t: any) => [t.id, t]));
+
+        const updatedTasks = tasks.map((t) => {
+          const p = prioritizedMap.get(t.id);
+          return p ? { ...t, priority: p.priority, reasoning: p.reasoning } : t;
+        });
+
+        // Sort based on the returned order
+        const orderedTasks = data.tasks
+          .map((pt: any) => updatedTasks.find((t) => t.id === pt.id))
+          .filter(Boolean) as Task[];
+
+        // Append any tasks that weren't in the AI response (safety fallback)
+        const missingTasks = updatedTasks.filter(
+          (t) => !prioritizedMap.has(t.id),
+        );
+
+        setTasks([...orderedTasks, ...missingTasks]);
+
+        // Optional: Update Firestore in background
+        data.tasks.forEach((pt: any) => {
+          const ref = doc(db, "tasks", pt.id);
+          updateDoc(ref, { priority: pt.priority });
+        });
+      }
+    } catch (error) {
+      console.error("Prioritization failed:", error);
+      alert("Failed to prioritize tasks");
+    } finally {
+      setIsPrioritizing(false);
+    }
+  };
+
+  const handlePrioritize = async () => {
+    if (tasks.length === 0) return;
+
+    setIsPrioritizing(true);
+    try {
+      const response = await fetch("/api/ai/prioritize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks }),
+      });
+
+      const data = await response.json();
+      if (data.tasks) {
+        // Create a map for O(1) lookup
+        const prioritizedMap = new Map(data.tasks.map((t: any) => [t.id, t]));
+
+        // Update priorities locally
+        const updatedTasks = tasks.map((t) => {
+          const p = prioritizedMap.get(t.id);
+          return p
+            ? {
+                ...t,
+                priority: p.priority as "low" | "medium" | "high",
+                reasoning: p.reasoning,
+              }
+            : t;
+        });
+
+        // Reorder tasks based on AI response
+        const orderedIds = data.tasks.map((t: any) => t.id);
+        const reorderedTasks = [
+          ...updatedTasks
+            .filter((t) => orderedIds.includes(t.id))
+            .sort(
+              (a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id),
+            ),
+          ...updatedTasks.filter((t) => !orderedIds.includes(t.id)),
+        ];
+
+        setTasks(reorderedTasks);
+
+        // Update Firestore in background
+        data.tasks.forEach((pt: any) => {
+          const ref = doc(db, "tasks", pt.id);
+          updateDoc(ref, {
+            priority: pt.priority,
+            reasoning: pt.reasoning,
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Prioritization failed:", error);
+      alert("Failed to prioritize tasks");
+    } finally {
+      setIsPrioritizing(false);
+    }
+  };
+
+  const handleSmartSchedule = async () => {
+    if (tasks.length === 0) return;
+
+    setIsScheduling(true);
+    try {
+      const response = await fetch("/api/ai/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks, date: selectedDate }),
+      });
+
+      const data = await response.json();
+      if (data.tasks) {
+        // Create map for O(1) lookup
+        const scheduledMap = new Map(data.tasks.map((t: any) => [t.id, t]));
+
+        // Update local tasks
+        const updatedTasks = tasks.map((t) => {
+          const s = scheduledMap.get(t.id);
+          return s
+            ? {
+                ...t,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                reasoning: s.reasoning,
+              }
+            : t;
+        });
+
+        // Sort by start time
+        updatedTasks.sort((a, b) =>
+          (a.startTime || "").localeCompare(b.startTime || ""),
+        );
+
+        setTasks(updatedTasks);
+
+        // Update Firestore
+        data.tasks.forEach((st: any) => {
+          const ref = doc(db, "tasks", st.id);
+          updateDoc(ref, {
+            startTime: st.startTime,
+            endTime: st.endTime,
+            reasoning: st.reasoning,
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Scheduling failed:", error);
+      alert("Failed to schedule tasks");
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  const handleVoiceAction = async (result: any) => {
+    if (!result || !result.action) return;
+
+    if (result.confirmation) {
+      alert(result.confirmation);
+    }
+
+    switch (result.action) {
+      case "CREATE_TASK":
+        if (result.data && auth.currentUser) {
+          try {
+            const newTask = {
+              title: result.data.title,
+              description: "",
+              date: result.data.date || selectedDate,
+              startTime: result.data.startTime || "",
+              endTime: "",
+              category: result.data.category || "Personal",
+              userId: auth.currentUser.uid,
+              status: "pending",
+              priority: "medium",
+              deleted: false,
+              createdAt: new Date().toISOString(),
+            };
+
+            const docRef = await addDoc(collection(db, "tasks"), newTask);
+            const taskWithId = { id: docRef.id, ...newTask } as Task;
+
+            // Only add to current view if date matches
+            if (newTask.date === selectedDate) {
+              setTasks((prev) => [...prev, taskWithId]);
+            }
+          } catch (error) {
+            console.error("Error creating task from voice:", error);
+          }
+        }
+        break;
+
+      case "DELETE_TASK":
+        // This is tricky as we need to find the task. For now, maybe just filter current view.
+        if (result.data.keywords) {
+          const keywords = result.data.keywords.toLowerCase();
+          const taskToDelete = tasks.find((t) =>
+            t.title.toLowerCase().includes(keywords),
+          );
+          if (taskToDelete) {
+            handleDeleteTask(taskToDelete.id);
+          } else {
+            alert("Could not find a task matching: " + result.data.keywords);
+          }
+        }
+        break;
+
+      case "PRIORITIZE_TASKS":
+        handlePrioritize();
+        break;
+
+      case "SCHEDULE_TASKS":
+        handleSmartSchedule();
+        break;
+
+      default:
+        console.log("Unknown voice action:", result.action);
+    }
+  };
+
   const loadTasksForDate = async (dateStr: string) => {
     setLoading(true);
     try {
@@ -211,8 +442,12 @@ export default function TasksPage() {
     }
   };
 
+  const handleVoiceCommand = (result: any) => {
+    handleVoiceAction(result);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -222,13 +457,45 @@ export default function TasksPage() {
             Manage your daily schedule
           </p>
         </div>
-        <Link
-          href="/dashboard/tasks/new"
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-colors shadow-lg shadow-purple-500/20"
+        <div className="flex gap-2 items-center">
+          <VoiceCommand onCommand={handleVoiceCommand} />
+          <Link
+            href="/dashboard/tasks/new"
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-colors shadow-lg shadow-purple-500/20"
+          >
+            <Plus size={20} />
+            <span>Add Task</span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={handleSmartSchedule}
+          disabled={isScheduling || tasks.length === 0}
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-colors shadow-md shadow-blue-500/20"
         >
-          <Plus size={20} />
-          <span>Add Task</span>
-        </Link>
+          {isScheduling ? (
+            <Loader2 className="animate-spin" size={20} />
+          ) : (
+            <Clock size={20} />
+          )}
+          <span>{isScheduling ? "Scheduling..." : "Smart Schedule"}</span>
+        </button>
+        <button
+          onClick={handlePrioritize}
+          disabled={isPrioritizing || tasks.length === 0}
+          className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-colors shadow-md shadow-indigo-500/20"
+        >
+          {isPrioritizing ? (
+            <Loader2 className="animate-spin" size={20} />
+          ) : (
+            <Sparkles size={20} />
+          )}
+          <span>
+            {isPrioritizing ? "Prioritizing..." : "Prioritize with AI"}
+          </span>
+        </button>
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
@@ -386,6 +653,12 @@ export default function TasksPage() {
                         </span>
                       )}
                     </div>
+                    {task.reasoning && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 italic flex items-center gap-1 bg-purple-50 dark:bg-purple-900/10 p-2 rounded-lg border border-purple-100 dark:border-purple-900/20">
+                        <Sparkles size={12} className="flex-shrink-0" />
+                        {task.reasoning}
+                      </p>
+                    )}
                   </div>
 
                   <div className="relative task-menu-container">
