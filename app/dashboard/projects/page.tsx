@@ -23,17 +23,24 @@ import {
   Building2,
   Users,
   Folder,
+  ArrowUpRight,
+  MoreHorizontal,
+  Plus,
+  Filter,
 } from "lucide-react";
+import Link from "next/link";
 
 interface ProjectStats {
   name: string;
   total: number;
   completed: number;
   progress: number;
+  status: "active" | "completed" | "archived";
 }
 
 export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [counts, setCounts] = useState({
     completed: 0,
     pending: 0,
@@ -150,11 +157,16 @@ export default function ProjectsPage() {
           const progress =
             total > 0 ? Math.round((completed / total) * 100) : 0;
 
+          let status: "active" | "completed" | "archived" = "active";
+          if (total > 0 && total === completed) status = "completed";
+          if (total === 0) status = "archived";
+
           return {
             name: cat,
             total,
             completed,
             progress,
+            status,
           };
         });
 
@@ -180,6 +192,13 @@ export default function ProjectsPage() {
 
     return () => unsubscribe();
   }, []);
+
+  const filteredProjects = projectStats.filter((project) => {
+    if (filter === "all") return true;
+    if (filter === "active") return project.status === "active";
+    if (filter === "completed") return project.status === "completed";
+    return true;
+  });
 
   const getProjectIcon = (name: string) => {
     switch (name.toLowerCase()) {
@@ -243,69 +262,140 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-10 pb-10">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Projects Overview
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">
-          Manage your projects and track progress across all categories.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Projects Overview
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            Manage your projects and track progress across all categories.
+          </p>
+        </div>
+
+        <Link
+          href="/dashboard/tasks/new"
+          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-colors shadow-lg shadow-purple-500/20"
+        >
+          <Plus size={20} />
+          <span>New Project</span>
+        </Link>
       </div>
 
       {/* My Projects Section */}
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Folder className="w-5 h-5 text-purple-600" />
-          My Projects
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projectStats.map((project, index) => {
-            const Icon = getProjectIcon(project.name);
-            return (
-              <div
-                key={index}
-                className="group p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md hover:border-purple-100 dark:hover:border-purple-900/50 transition-all duration-300"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform duration-300">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white block">
-                      {project.total}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Total Tasks
-                    </span>
-                  </div>
-                </div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Folder className="w-5 h-5 text-purple-600" />
+            My Projects
+          </h2>
 
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                    {project.name}
-                  </h3>
+          <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            {(["all", "active", "completed"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  filter === f
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredProjects.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+            <Folder className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              No projects found
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              {filter === "all"
+                ? "Start by creating tasks in new categories."
+                : `No ${filter} projects found.`}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map((project, index) => {
+              const Icon = getProjectIcon(project.name);
+              return (
+                <div
+                  key={index}
+                  className="group relative p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:border-purple-100 dark:hover:border-purple-900/50 transition-all duration-300"
+                >
+                  <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="p-1 text-gray-400 hover:text-purple-600 rounded-full hover:bg-purple-50 dark:hover:bg-purple-900/20">
+                      <MoreHorizontal size={20} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                      <Icon className="w-7 h-7" />
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-purple-600 transition-colors">
+                      {project.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                      {project.total} Tasks
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                      {project.completed} Completed
+                    </p>
+                  </div>
 
                   {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span>Progress</span>
-                      <span>{project.progress}%</span>
-                    </div>
-                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {project.progress}%
+                      </span>
                       <div
-                        className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          project.status === "completed"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : project.status === "active"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                        }`}
+                      >
+                        {project.status.charAt(0).toUpperCase() +
+                          project.status.slice(1)}
+                      </div>
+                    </div>
+
+                    <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                          project.progress === 100
+                            ? "bg-green-500"
+                            : "bg-gradient-to-r from-purple-500 to-blue-500"
+                        }`}
                         style={{ width: `${project.progress}%` }}
                       />
                     </div>
-                    <div className="text-xs text-gray-400 pt-1">
-                      {project.completed} completed / {project.total} total
-                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-50 dark:border-gray-800 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Link
+                      href="/dashboard/tasks"
+                      className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1"
+                    >
+                      View Tasks <ArrowUpRight size={16} />
+                    </Link>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Status Overview Section */}

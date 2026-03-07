@@ -134,7 +134,7 @@ export default function SidebarProfile() {
             <h4 className="text-xs text-gray-400  uppercase mb-2">General</h4>
             <SidebarItem label="Account" href="/dashboard" />
             <SidebarItem label="Projects" href="/dashboard/projects" />
-            <SidebarItem label="Notifications" href="/" />
+            <SidebarItem label="Notifications" href="/dashboard/notifications" />
             <SidebarItem label="Saved to Cloud" href="/" />
           </div>
 
@@ -143,9 +143,9 @@ export default function SidebarProfile() {
             <h4 className="text-xs text-gray-400 uppercase mb-2">
               Team & Access
             </h4>
-            <SidebarItem label="Set up your Team" href="/" />
+            <SidebarItem label="Set up your Team" href="/dashboard/teams" />
             <SidebarItem label="Allow Team Edit" href="/" />
-            <SidebarItem label="Storage and Data" href="/" />
+            <SidebarItem label="Storage and Data" href="/dashboard/storage" />
           </div>
 
           {/* Appearance */}

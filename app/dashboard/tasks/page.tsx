@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import DateSelector from "../../dateSelector";
 import Link from "next/link";
-import VoiceCommand from "../../../components/VoiceCommand";
+import VoiceCommand from "../../components/VoiceCommand";
 
 interface Task {
   id: string;
@@ -160,56 +160,10 @@ export default function TasksPage() {
 
       const data = await response.json();
       if (data.tasks) {
-        // Update local state with new priorities and order
         // Create a map for O(1) lookup
-        const prioritizedMap = new Map(data.tasks.map((t: any) => [t.id, t]));
-
-        const updatedTasks = tasks.map((t) => {
-          const p = prioritizedMap.get(t.id);
-          return p ? { ...t, priority: p.priority, reasoning: p.reasoning } : t;
-        });
-
-        // Sort based on the returned order
-        const orderedTasks = data.tasks
-          .map((pt: any) => updatedTasks.find((t) => t.id === pt.id))
-          .filter(Boolean) as Task[];
-
-        // Append any tasks that weren't in the AI response (safety fallback)
-        const missingTasks = updatedTasks.filter(
-          (t) => !prioritizedMap.has(t.id),
+        const prioritizedMap = new Map<string, any>(
+          data.tasks.map((t: any) => [t.id, t]),
         );
-
-        setTasks([...orderedTasks, ...missingTasks]);
-
-        // Optional: Update Firestore in background
-        data.tasks.forEach((pt: any) => {
-          const ref = doc(db, "tasks", pt.id);
-          updateDoc(ref, { priority: pt.priority });
-        });
-      }
-    } catch (error) {
-      console.error("Prioritization failed:", error);
-      alert("Failed to prioritize tasks");
-    } finally {
-      setIsPrioritizing(false);
-    }
-  };
-
-  const handlePrioritize = async () => {
-    if (tasks.length === 0) return;
-
-    setIsPrioritizing(true);
-    try {
-      const response = await fetch("/api/ai/prioritize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks }),
-      });
-
-      const data = await response.json();
-      if (data.tasks) {
-        // Create a map for O(1) lookup
-        const prioritizedMap = new Map(data.tasks.map((t: any) => [t.id, t]));
 
         // Update priorities locally
         const updatedTasks = tasks.map((t) => {
@@ -267,7 +221,9 @@ export default function TasksPage() {
       const data = await response.json();
       if (data.tasks) {
         // Create map for O(1) lookup
-        const scheduledMap = new Map(data.tasks.map((t: any) => [t.id, t]));
+        const scheduledMap = new Map<string, any>(
+          data.tasks.map((t: any) => [t.id, t]),
+        );
 
         // Update local tasks
         const updatedTasks = tasks.map((t) => {
@@ -353,7 +309,7 @@ export default function TasksPage() {
             t.title.toLowerCase().includes(keywords),
           );
           if (taskToDelete) {
-            handleDeleteTask(taskToDelete.id);
+            handleDelete(taskToDelete.id);
           } else {
             alert("Could not find a task matching: " + result.data.keywords);
           }
