@@ -15,6 +15,7 @@ import { useSidebar } from "@/app/dashboard/SidebarContext";
 
 export default function SidebarProfile() {
   const [darkMode, setDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState("/gander.jpg");
@@ -31,10 +32,13 @@ export default function SidebarProfile() {
   };
 
   useEffect(() => {
+    setMounted(true);
     const isDark = localStorage.getItem("theme") === "dark";
     setDarkMode(isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
+
+  const resolvedDarkMode = mounted ? darkMode : false;
 
   /* ---------- Get email from Firebase Auth ---------- */
   useEffect(() => {
@@ -134,7 +138,10 @@ export default function SidebarProfile() {
             <h4 className="text-xs text-gray-400  uppercase mb-2">General</h4>
             <SidebarItem label="Account" href="/dashboard" />
             <SidebarItem label="Projects" href="/dashboard/projects" />
-            <SidebarItem label="Notifications" href="/dashboard/notifications" />
+            <SidebarItem
+              label="Notifications"
+              href="/dashboard/notifications"
+            />
             <SidebarItem label="Saved to Cloud" href="/" />
           </div>
 
@@ -144,7 +151,7 @@ export default function SidebarProfile() {
               Team & Access
             </h4>
             <SidebarItem label="Set up your Team" href="/dashboard/teams" />
-            <SidebarItem label="Allow Team Edit" href="/" />
+            <SidebarItem label="Allow Team Edit" href="/dashboard/teams/edit" />
             <SidebarItem label="Storage and Data" href="/dashboard/storage" />
           </div>
 
@@ -157,7 +164,7 @@ export default function SidebarProfile() {
                 onClick={toggleDark}
                 className="p-2 rounded-full bg-gray-300 dark:bg-gray-700"
               >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                {resolvedDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
             </div>
           </div>
@@ -167,7 +174,7 @@ export default function SidebarProfile() {
             <h4 className="text-xs text-gray-400 uppercase mb-2">Support</h4>
             <SidebarItem label="Help & Feedback" href="/" />
             <SidebarItem label="Privacy" href="/" />
-            <SidebarItem label="Invite a Friend" href="/" />
+            <SidebarItem label="Invite a Friend" href="/dashboard/invite" />
             <SidebarItem label="Delete Account" href="/" />
           </div>
         </div>

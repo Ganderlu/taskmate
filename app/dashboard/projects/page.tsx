@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Plus,
   Filter,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -40,6 +41,7 @@ interface ProjectStats {
 
 export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [counts, setCounts] = useState({
     completed: 0,
@@ -174,8 +176,18 @@ export default function ProjectsPage() {
         stats.sort((a, b) => b.total - a.total);
 
         setProjectStats(stats);
-      } catch (error) {
-        console.error("Error fetching project stats:", error);
+      } catch (err: any) {
+        console.error("Error fetching project stats:", err);
+        if (
+          err?.code === "permission-denied" ||
+          err?.message?.includes("permissions")
+        ) {
+          setError(
+            "Firebase permissions not configured. Please deploy firestore.rules to your Firebase project.",
+          );
+        } else {
+          setError("Unable to load projects. Please try again in a moment.");
+        }
       } finally {
         setLoading(false);
       }
@@ -256,6 +268,47 @@ export default function ProjectsPage() {
     return (
       <div className="flex items-center justify-center h-full min-h-[50vh]">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto mt-10">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-3xl p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-800 dark:text-red-300 mb-3">
+            Something went wrong
+          </h2>
+          <p className="text-red-700 dark:text-red-400 mb-6 leading-relaxed">
+            {error}
+          </p>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 text-left mb-6 border border-red-100 dark:border-red-900/40">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-purple-500" />
+              Quick Fix (run these in your terminal):
+            </p>
+            <pre className="text-xs bg-gray-900 dark:bg-black text-green-400 p-4 rounded-xl overflow-x-auto font-mono leading-relaxed">
+              {`npm install -g firebase-tools
+firebase login
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes`}
+            </pre>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              window.location.reload();
+            }}
+            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-red-500/20"
+          >
+            <RotateCcw size={18} />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
