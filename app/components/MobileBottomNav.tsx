@@ -8,7 +8,6 @@ import {
   Users,
   MoreHorizontal,
   X,
-  FolderKanban,
   Bell,
   Settings,
   Cloud,
@@ -34,13 +33,6 @@ export default function MobileBottomNav() {
     {
       group: "Workspace",
       items: [
-        {
-          label: "Projects",
-          href: "/dashboard/projects",
-          icon: FolderKanban,
-          gradient: "from-blue-500 to-cyan-500",
-          badgeBg: "bg-blue-50 dark:bg-blue-900/25",
-        },
         {
           label: "Notifications",
           href: "/dashboard/notifications",

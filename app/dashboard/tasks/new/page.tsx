@@ -17,18 +17,71 @@ import {
   Flag,
   FolderKanban,
   AlignLeft,
+  Plus,
+  X,
 } from "lucide-react";
 import dayjs from "dayjs";
 
 const DEFAULT_CATEGORIES = ["Work", "Personal", "Study", "Health", "Finance"];
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; active: string; dot: string }> = {
-  Work: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-blue-200 dark:hover:border-blue-800", active: "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105", dot: "bg-blue-500" },
-  Personal: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-emerald-200 dark:hover:border-emerald-800", active: "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-105", dot: "bg-emerald-500" },
-  Study: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-amber-200 dark:hover:border-amber-800", active: "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105", dot: "bg-amber-500" },
-  Health: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-rose-200 dark:hover:border-rose-800", active: "bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/30 scale-105", dot: "bg-rose-500" },
-  Finance: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-cyan-200 dark:hover:border-cyan-800", active: "bg-cyan-500 border-cyan-500 text-white shadow-lg shadow-cyan-500/30 scale-105", dot: "bg-cyan-500" },
-  Default: { bg: "bg-white dark:bg-gray-800", text: "text-gray-600 dark:text-gray-300", border: "border-transparent hover:border-purple-200 dark:hover:border-purple-800", active: "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-600/30 scale-105", dot: "bg-purple-500" },
+const CATEGORY_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string; active: string; dot: string }
+> = {
+  Work: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-blue-200 dark:hover:border-blue-800",
+    active:
+      "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105",
+    dot: "bg-blue-500",
+  },
+  Personal: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-emerald-200 dark:hover:border-emerald-800",
+    active:
+      "bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-105",
+    dot: "bg-emerald-500",
+  },
+  Study: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-amber-200 dark:hover:border-amber-800",
+    active:
+      "bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105",
+    dot: "bg-amber-500",
+  },
+  Health: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-rose-200 dark:hover:border-rose-800",
+    active:
+      "bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/30 scale-105",
+    dot: "bg-rose-500",
+  },
+  Finance: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-cyan-200 dark:hover:border-cyan-800",
+    active:
+      "bg-cyan-500 border-cyan-500 text-white shadow-lg shadow-cyan-500/30 scale-105",
+    dot: "bg-cyan-500",
+  },
+  Default: {
+    bg: "bg-white dark:bg-gray-800",
+    text: "text-gray-600 dark:text-gray-300",
+    border:
+      "border-transparent hover:border-purple-200 dark:hover:border-purple-800",
+    active:
+      "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-600/30 scale-105",
+    dot: "bg-purple-500",
+  },
 };
 
 function getCategoryStyle(category: string) {
@@ -40,7 +93,8 @@ const PRIORITY_OPTIONS = [
     value: "high" as const,
     label: "High",
     description: "Urgent & Important",
-    style: "bg-gradient-to-r from-red-500 to-rose-500 border-red-500 text-white shadow-lg shadow-red-500/30",
+    style:
+      "bg-gradient-to-r from-red-500 to-rose-500 border-red-500 text-white shadow-lg shadow-red-500/30",
     dot: "bg-white",
     ring: "ring-4 ring-red-500/30",
   },
@@ -48,7 +102,8 @@ const PRIORITY_OPTIONS = [
     value: "medium" as const,
     label: "Medium",
     description: "Important",
-    style: "bg-gradient-to-r from-amber-500 to-orange-500 border-amber-500 text-white shadow-lg shadow-amber-500/30",
+    style:
+      "bg-gradient-to-r from-amber-500 to-orange-500 border-amber-500 text-white shadow-lg shadow-amber-500/30",
     dot: "bg-white",
     ring: "ring-4 ring-amber-500/30",
   },
@@ -56,7 +111,8 @@ const PRIORITY_OPTIONS = [
     value: "low" as const,
     label: "Low",
     description: "Nice to have",
-    style: "bg-gradient-to-r from-blue-500 to-cyan-500 border-blue-500 text-white shadow-lg shadow-blue-500/30",
+    style:
+      "bg-gradient-to-r from-blue-500 to-cyan-500 border-blue-500 text-white shadow-lg shadow-blue-500/30",
     dot: "bg-white",
     ring: "ring-4 ring-blue-500/30",
   },
@@ -78,6 +134,32 @@ export default function NewTaskPage() {
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !user) return;
+
+    setAddingCategory(true);
+    try {
+      await addDoc(collection(db, "categories"), {
+        name: newCategoryName.trim(),
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+      });
+
+      setCategories((prev) => [...new Set([...prev, newCategoryName.trim()])]);
+      setCategory(newCategoryName.trim());
+      setNewCategoryName("");
+      setIsAddCategoryModalOpen(false);
+    } catch (error) {
+      console.error("Error adding category:", error);
+      alert("Failed to add category");
+    } finally {
+      setAddingCategory(false);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -92,10 +174,7 @@ export default function NewTaskPage() {
 
   const fetchCustomCategories = async (uid: string) => {
     try {
-      const q = query(
-        collection(db, "categories"),
-        where("userId", "==", uid),
-      );
+      const q = query(collection(db, "categories"), where("userId", "==", uid));
       const snapshot = await getDocs(q);
       const customCats = snapshot.docs.map((doc) => doc.data().name);
       setCategories((prev) => [...new Set([...prev, ...customCats])]);
@@ -141,7 +220,9 @@ export default function NewTaskPage() {
     } catch (error: any) {
       console.error("AI Generation Error:", error);
       if (error.message.includes("API_KEY")) {
-        alert("⚠️ AI Service Not Configured\n\nPlease add your Gemini API Key to the .env.local file to use this feature.");
+        alert(
+          "⚠️ AI Service Not Configured\n\nPlease add your Gemini API Key to the .env.local file to use this feature.",
+        );
       } else {
         alert(error.message || "Failed to generate task details");
       }
@@ -346,12 +427,18 @@ export default function NewTaskPage() {
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className={`w-3 h-3 rounded-full ${isActive ? opt.dot : opt.style.includes("red") ? "bg-red-400" : opt.style.includes("amber") ? "bg-amber-400" : "bg-blue-400"}`} />
-                          <span className={`text-sm font-bold ${isActive ? "text-white" : "text-gray-800 dark:text-white"}`}>
+                          <span
+                            className={`w-3 h-3 rounded-full ${isActive ? opt.dot : opt.style.includes("red") ? "bg-red-400" : opt.style.includes("amber") ? "bg-amber-400" : "bg-blue-400"}`}
+                          />
+                          <span
+                            className={`text-sm font-bold ${isActive ? "text-white" : "text-gray-800 dark:text-white"}`}
+                          >
                             {opt.label}
                           </span>
                         </div>
-                        <p className={`text-xs ${isActive ? "text-white/80" : "text-gray-500 dark:text-gray-400"}`}>
+                        <p
+                          className={`text-xs ${isActive ? "text-white/80" : "text-gray-500 dark:text-gray-400"}`}
+                        >
                           {opt.description}
                         </p>
                         {isActive && (
@@ -381,16 +468,27 @@ export default function NewTaskPage() {
                       <button
                         key={cat}
                         onClick={() => setCategory(cat)}
-                        className={`inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl font-semibold transition-all duration-200 border-2 text-sm ${
-                          isActive ? style.active : `${style.bg} ${style.text} ${style.border}`
+                        className={`inline-flex items-center gap-2 px-4.5 py-2.5 rounded-xl font-semibold transition-all duration-200 border-2 text-sm active:scale-95 ${
+                          isActive
+                            ? style.active
+                            : `${style.bg} ${style.text} ${style.border}`
                         }`}
                       >
-                        <span className={`w-2 h-2 rounded-full ${isActive ? "bg-white" : style.dot}`} />
+                        <span
+                          className={`w-2 h-2 rounded-full ${isActive ? "bg-white" : style.dot}`}
+                        />
                         {cat}
                         {isActive && <Check size={13} />}
                       </button>
                     );
                   })}
+                  <button
+                    onClick={() => setIsAddCategoryModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl font-semibold transition-all duration-200 border-2 border-dashed text-sm active:scale-95 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 bg-white dark:bg-gray-800"
+                  >
+                    <Plus size={15} />
+                    Add New
+                  </button>
                 </div>
               </div>
             </div>
@@ -459,6 +557,52 @@ export default function NewTaskPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Category Modal */}
+      {isAddCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Add New Category
+              </h3>
+              <button
+                onClick={() => setIsAddCategoryModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newCategoryName.trim())
+                  handleAddCategory();
+              }}
+              placeholder="Category Name (e.g. Design)"
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl mb-6 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-sm"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsAddCategoryModalOpen(false)}
+                className="flex-1 py-3 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCategory}
+                disabled={addingCategory || !newCategoryName.trim()}
+                className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-sm shadow-lg shadow-purple-500/20"
+              >
+                {addingCategory ? "Adding..." : "Add Category"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

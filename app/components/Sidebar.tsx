@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   CheckSquare,
-  FolderKanban,
   Settings,
   LogOut,
   Sun,
@@ -84,7 +83,7 @@ export default function Sidebar() {
       setLoading(false);
     }
   };
-
+  
   const handleLogout = async () => {
     try {
       await auth.signOut();
@@ -101,7 +100,6 @@ export default function Sidebar() {
       items: [
         { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { label: "My Tasks", href: "/dashboard/tasks", icon: CheckSquare },
-        { label: "Projects", href: "/dashboard/projects", icon: FolderKanban },
         {
           label: "Notifications",
           href: "/dashboard/notifications",

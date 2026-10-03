@@ -14,49 +14,49 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
 import { Upload } from "lucide-react";
+const uid = () =>
+  Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 export default function CreateTaskPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const taskId = searchParams.get("id");
-
   const user = auth.currentUser;
 
+  const taskId = searchParams.get("id");
   const [loadingTask, setLoadingTask] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [taskDate, setTaskDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [startTime, setStartTime] = useState("16:00");
   const [endTime, setEndTime] = useState("19:00");
-  const [category, setCategory] = useState("Work");
+  const [startTime, setStartTime] = useState("09:00");
+    load();
+  }, [user?.uid]);
 
   // Load task if editing
   useEffect(() => {
     if (!taskId) {
       setLoadingTask(false);
+
       return;
     }
-
     const loadTask = async () => {
+
       const ref = doc(db, "tasks", taskId);
       const snap = await getDoc(ref);
-
       if (snap.exists()) {
         const t = snap.data();
         setTitle(t.title || "");
         setDescription(t.description || "");
         setTaskDate(t.date || dayjs().format("YYYY-MM-DD"));
         setStartTime(t.startTime || "09:00");
-        setEndTime(t.endTime || "10:00");
-        setCategory(t.category || "Work");
+      }
+
+        }
       }
 
       setLoadingTask(false);
     };
-
     loadTask();
-  }, [taskId]);
-
   // Create new task
   const handleCreateTask = async () => {
     if (!user) return alert("User not logged in");
@@ -95,16 +95,16 @@ export default function CreateTaskPage() {
   };
 
   // Delete task
-  const handleDeleteTask = async () => {
-    if (!taskId) return;
+  };
+
 
     await deleteDoc(doc(db, "tasks", taskId));
     router.push("/tasks");
   };
 
   if (loadingTask) return <p className="p-4">Loading task...</p>;
-
-  return (
+      </div>
+    );
     <div className="p-4 sm:p-6 bg-white lg:p-10 w-full max-w-5xl mx-auto">
       {/* HEADER */}
       <div className="flex justify-between text-black items-center">
@@ -112,8 +112,8 @@ export default function CreateTaskPage() {
           {taskId ? "Edit Task" : "Create New Task"}
         </h1>
         <Upload className="text-gray-600" size={24} />
-      </div>
-
+          </div>
+        </div>
       {/* TOP INPUT - EDITABLE TITLE */}
       <div className="mt-4 bg-blue-50 p-3 rounded-lg flex items-center gap-3">
         <Upload size={20} className="text-gray-400" />
@@ -123,8 +123,8 @@ export default function CreateTaskPage() {
           onChange={(e) => setTitle(e.target.value)}
           className="w-full bg-transparent outline-none text-gray-700 text-lg"
         />
-      </div>
-
+          </div>
+        </div>
       {/* TITLE + DATE */}
       <div className="mt-6">
         <p className="text-blue-600 font-semibold">Title:</p>
@@ -180,31 +180,31 @@ export default function CreateTaskPage() {
                 >
                   {cat}
                 </button>
-              ))}
-            </div>
+
+                  {/* Delete */}
           </div>
 
           {/* RIGHT */}
           <div>
             <label className="font-semibold">Description:</label>
-            <textarea
+              Add Subtask — Step {subtasks.length + 1}
               rows={6}
+            </button>
+          </SectionCard>
+              className="w-full mt-2 border bg-transparent rounded-lg p-2"
+            title="Description & Notes"
+          </div>
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full mt-2 border bg-transparent rounded-lg p-2"
-            />
-          </div>
-        </div>
-
         {/* BUTTONS */}
         <div className="flex gap-5 mt-6">
           {taskId && (
-            <button
+                label="Date"
               onClick={handleDeleteTask}
               className="px-6 py-2 bg-red-200 text-red-700 rounded-lg"
-            >
+              <SummaryRow
               Delete Task
-            </button>
+                  <Loader2 size={20} className="animate-spin" />
           )}
 
           <button
@@ -213,7 +213,23 @@ export default function CreateTaskPage() {
           >
             {taskId ? "Update Task" : "Save Task"}
           </button>
+              >
+        {label}
+      </div>
+      <div className="flex-1 text-right min-w-0">
+        <div className="flex items-center justify-end gap-1.5">
+          {accentDot && (
+            <span className={`w-2 h-2 rounded-full ${accentDot}`} />
+          )}
+          <span className="text-[13px] md:text-sm font-bold text-gray-800 dark:text-white truncate">
+            {value}
+          </span>
         </div>
+        {hint && (
+          <p className="text-[10.5px] font-semibold text-gray-400 dark:text-gray-500 mt-0.5">
+            {hint}
+          </p>
+        )}
       </div>
     </div>
   );

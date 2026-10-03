@@ -10,7 +10,6 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  addDoc,
   orderBy,
 } from "firebase/firestore";
 import dayjs from "dayjs";
@@ -67,17 +66,70 @@ interface Task {
 type StatusFilter = "all" | "pending" | "ongoing" | "completed" | "cancelled";
 type SortOption = "priority" | "time" | "status" | "alphabetical" | "created";
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  Work: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", border: "border-blue-200 dark:border-blue-800", dot: "bg-blue-500" },
-  Personal: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-800", dot: "bg-emerald-500" },
-  Study: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", border: "border-amber-200 dark:border-amber-800", dot: "bg-amber-500" },
-  Health: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500" },
-  Finance: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-200 dark:border-cyan-800", dot: "bg-cyan-500" },
-  School: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", border: "border-indigo-200 dark:border-indigo-800", dot: "bg-indigo-500" },
-  Business: { bg: "bg-violet-50 dark:bg-violet-900/20", text: "text-violet-700 dark:text-violet-400", border: "border-violet-200 dark:border-violet-800", dot: "bg-violet-500" },
-  Teams: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", border: "border-orange-200 dark:border-orange-800", dot: "bg-orange-500" },
-  Freelancer: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", border: "border-teal-200 dark:border-teal-800", dot: "bg-teal-500" },
-  Default: { bg: "bg-gray-50 dark:bg-gray-800", text: "text-gray-700 dark:text-gray-300", border: "border-gray-200 dark:border-gray-700", dot: "bg-gray-500" },
+const CATEGORY_COLORS: Record<
+  string,
+  { bg: string; text: string; border: string; dot: string }
+> = {
+  Work: {
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    text: "text-blue-700 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800",
+    dot: "bg-blue-500",
+  },
+  Personal: {
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    text: "text-emerald-700 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-800",
+    dot: "bg-emerald-500",
+  },
+  Study: {
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    text: "text-amber-700 dark:text-amber-400",
+    border: "border-amber-200 dark:border-amber-800",
+    dot: "bg-amber-500",
+  },
+  Health: {
+    bg: "bg-rose-50 dark:bg-rose-900/20",
+    text: "text-rose-700 dark:text-rose-400",
+    border: "border-rose-200 dark:border-rose-800",
+    dot: "bg-rose-500",
+  },
+  Finance: {
+    bg: "bg-cyan-50 dark:bg-cyan-900/20",
+    text: "text-cyan-700 dark:text-cyan-400",
+    border: "border-cyan-200 dark:border-cyan-800",
+    dot: "bg-cyan-500",
+  },
+  School: {
+    bg: "bg-indigo-50 dark:bg-indigo-900/20",
+    text: "text-indigo-700 dark:text-indigo-400",
+    border: "border-indigo-200 dark:border-indigo-800",
+    dot: "bg-indigo-500",
+  },
+  Business: {
+    bg: "bg-violet-50 dark:bg-violet-900/20",
+    text: "text-violet-700 dark:text-violet-400",
+    border: "border-violet-200 dark:border-violet-800",
+    dot: "bg-violet-500",
+  },
+  Teams: {
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    text: "text-orange-700 dark:text-orange-400",
+    border: "border-orange-200 dark:border-orange-800",
+    dot: "bg-orange-500",
+  },
+  Freelancer: {
+    bg: "bg-teal-50 dark:bg-teal-900/20",
+    text: "text-teal-700 dark:text-teal-400",
+    border: "border-teal-200 dark:border-teal-800",
+    dot: "bg-teal-500",
+  },
+  Default: {
+    bg: "bg-gray-50 dark:bg-gray-800",
+    text: "text-gray-700 dark:text-gray-300",
+    border: "border-gray-200 dark:border-gray-700",
+    dot: "bg-gray-500",
+  },
 };
 
 function getCategoryStyle(category: string) {
@@ -179,31 +231,21 @@ export default function TasksPage() {
   const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Bulk Selection
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [showBulkMenu, setShowBulkMenu] = useState(false);
 
   // Categories State
-  const [categories, setCategories] = useState<string[]>([
-    "All",
-    "Work",
-    "Personal",
-    "Study",
-    "Health",
-    "Finance",
-    "School",
-    "Business",
-    "Teams",
-    "Freelancer",
-  ]);
+  const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [addingCategory, setAddingCategory] = useState(false);
 
   // Priority Quick Update Menu
-  const [priorityMenuTaskId, setPriorityMenuTaskId] = useState<string | null>(null);
+  const [priorityMenuTaskId, setPriorityMenuTaskId] = useState<string | null>(
+    null,
+  );
 
-  // Fetch custom categories
+  // Fetch only user's custom-added categories from Firestore
   useEffect(() => {
     const fetchCategories = async () => {
       if (!auth.currentUser) return;
@@ -214,9 +256,10 @@ export default function TasksPage() {
         );
         const snapshot = await getDocs(q);
         const customCats = snapshot.docs.map((doc) => doc.data().name);
-        setCategories((prev) => [...new Set([...prev, ...customCats])]);
+        setCategories(["All", ...customCats]);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        setCategories(["All"]);
       }
     };
 
@@ -227,29 +270,6 @@ export default function TasksPage() {
     });
     return () => unsubscribe();
   }, []);
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim() || !auth.currentUser) return;
-
-    setAddingCategory(true);
-    try {
-      await addDoc(collection(db, "categories"), {
-        name: newCategoryName.trim(),
-        userId: auth.currentUser.uid,
-        createdAt: new Date().toISOString(),
-      });
-
-      setCategories((prev) => [...prev, newCategoryName.trim()]);
-      setSelectedCategory(newCategoryName.trim());
-      setNewCategoryName("");
-      setIsAddCategoryModalOpen(false);
-    } catch (error) {
-      console.error("Error adding category:", error);
-      alert("Failed to add category");
-    } finally {
-      setAddingCategory(false);
-    }
-  };
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -513,13 +533,18 @@ export default function TasksPage() {
       console.error("Error updating task status:", err);
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === taskId ? { ...t, status: currentStatus as Task["status"] } : t,
+          t.id === taskId
+            ? { ...t, status: currentStatus as Task["status"] }
+            : t,
         ),
       );
     }
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: Task["status"]) => {
+  const updateTaskStatus = async (
+    taskId: string,
+    newStatus: Task["status"],
+  ) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
     const oldStatus = task.status;
@@ -540,7 +565,10 @@ export default function TasksPage() {
     }
   };
 
-  const updateTaskPriority = async (taskId: string, newPriority: Task["priority"]) => {
+  const updateTaskPriority = async (
+    taskId: string,
+    newPriority: Task["priority"],
+  ) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
     const oldPriority = task.priority;
@@ -557,7 +585,9 @@ export default function TasksPage() {
     } catch (err) {
       console.error("Error updating task priority:", err);
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, priority: oldPriority } : t)),
+        prev.map((t) =>
+          t.id === taskId ? { ...t, priority: oldPriority } : t,
+        ),
       );
     }
   };
@@ -633,7 +663,12 @@ export default function TasksPage() {
 
   const handleBulkDelete = async () => {
     if (selectedTaskIds.size === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedTaskIds.size} task(s)?`)) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedTaskIds.size} task(s)?`,
+      )
+    )
+      return;
 
     const idsToDelete = Array.from(selectedTaskIds);
     setTasks((prev) => prev.filter((t) => !idsToDelete.includes(t.id)));
@@ -642,7 +677,9 @@ export default function TasksPage() {
 
     try {
       await Promise.all(
-        idsToDelete.map((id) => updateDoc(doc(db, "tasks", id), { deleted: true })),
+        idsToDelete.map((id) =>
+          updateDoc(doc(db, "tasks", id), { deleted: true }),
+        ),
       );
     } catch (err) {
       console.error("Error in bulk delete:", err);
@@ -663,7 +700,9 @@ export default function TasksPage() {
     setShowBulkMenu(false);
 
     try {
-      await Promise.all(ids.map((id) => updateDoc(doc(db, "tasks", id), { status: newStatus })));
+      await Promise.all(
+        ids.map((id) => updateDoc(doc(db, "tasks", id), { status: newStatus })),
+      );
     } catch (err) {
       console.error("Error in bulk status update:", err);
       setTasks(oldTasks);
@@ -690,7 +729,9 @@ export default function TasksPage() {
     let result = [...tasks];
 
     if (selectedCategory !== "All") {
-      result = result.filter((t) => (t.category || "Work") === selectedCategory);
+      result = result.filter(
+        (t) => (t.category || "Work") === selectedCategory,
+      );
     }
 
     if (statusFilter !== "all") {
@@ -719,7 +760,9 @@ export default function TasksPage() {
         );
         break;
       case "time":
-        result.sort((a, b) => (a.startTime || "99:99").localeCompare(b.startTime || "99:99"));
+        result.sort((a, b) =>
+          (a.startTime || "99:99").localeCompare(b.startTime || "99:99"),
+        );
         break;
       case "status":
         result.sort(
@@ -734,7 +777,8 @@ export default function TasksPage() {
       case "created":
         result.sort(
           (a, b) =>
-            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime(),
         );
         break;
     }
@@ -742,11 +786,26 @@ export default function TasksPage() {
     return result;
   }, [tasks, selectedCategory, statusFilter, searchQuery, sortBy]);
 
-  const statusTabs: { key: StatusFilter; label: string; count: number; icon: any }[] = [
+  const statusTabs: {
+    key: StatusFilter;
+    label: string;
+    count: number;
+    icon: any;
+  }[] = [
     { key: "all", label: "All", count: stats.total, icon: ListTodo },
     { key: "pending", label: "Pending", count: stats.pending, icon: Circle },
-    { key: "ongoing", label: "In Progress", count: stats.ongoing, icon: PlayCircle },
-    { key: "completed", label: "Completed", count: stats.completed, icon: CheckCircle2 },
+    {
+      key: "ongoing",
+      label: "In Progress",
+      count: stats.ongoing,
+      icon: PlayCircle,
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      count: stats.completed,
+      icon: CheckCircle2,
+    },
   ];
 
   const sortOptions: { key: SortOption; label: string; icon: any }[] = [
@@ -768,10 +827,10 @@ export default function TasksPage() {
               Task Overview
             </span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
             My Tasks
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm sm:text-base">
             {dayjs(selectedDate).format("dddd, MMMM D, YYYY")}
           </p>
         </div>
@@ -779,10 +838,11 @@ export default function TasksPage() {
           <VoiceCommand onCommand={handleVoiceCommand} />
           <Link
             href="/dashboard/tasks/new"
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 font-medium"
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 sm:px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 font-medium active:scale-95"
           >
             <Plus size={18} />
-            <span>Add Task</span>
+            <span className="hidden sm:inline">Add Task</span>
+            <span className="sm:hidden">Add</span>
           </Link>
         </div>
       </div>
@@ -795,8 +855,12 @@ export default function TasksPage() {
               <ListTodo className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">Total Tasks</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            {stats.total}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+            Total Tasks
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
@@ -805,8 +869,12 @@ export default function TasksPage() {
               <Circle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pending}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">Pending</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            {stats.pending}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+            Pending
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
@@ -815,8 +883,12 @@ export default function TasksPage() {
               <PlayCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.ongoing}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">In Progress</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            {stats.ongoing}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+            In Progress
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
@@ -825,8 +897,12 @@ export default function TasksPage() {
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.completed}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">Completed</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            {stats.completed}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+            Completed
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow col-span-2 md:col-span-1">
@@ -844,7 +920,9 @@ export default function TasksPage() {
               style={{ width: `${stats.progress}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-2.5 font-medium">Completion Rate</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-2.5 font-medium">
+            Completion Rate
+          </div>
         </div>
       </div>
 
@@ -910,7 +988,9 @@ export default function TasksPage() {
             className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium whitespace-nowrap"
           >
             <ArrowUpDown size={16} />
-            <span>Sort: {sortOptions.find((o) => o.key === sortBy)?.label}</span>
+            <span>
+              Sort: {sortOptions.find((o) => o.key === sortBy)?.label}
+            </span>
           </button>
 
           {showSortMenu && (
@@ -929,9 +1009,16 @@ export default function TasksPage() {
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                   >
-                    <opt.icon size={16} className={sortBy === opt.key ? "text-purple-500" : "text-gray-400"} />
+                    <opt.icon
+                      size={16}
+                      className={
+                        sortBy === opt.key ? "text-purple-500" : "text-gray-400"
+                      }
+                    />
                     <span className="flex-1 text-left">{opt.label}</span>
-                    {sortBy === opt.key && <Check size={16} className="text-purple-500" />}
+                    {sortBy === opt.key && (
+                      <Check size={16} className="text-purple-500" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -971,86 +1058,38 @@ export default function TasksPage() {
         })}
       </div>
 
-      {/* Categories Bar */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <Filter size={15} />
-            Filter by Category
-          </h3>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {categories.map((cat) => {
-            const isActive = selectedCategory === cat;
-            const style = cat === "All" ? null : getCategoryStyle(cat);
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25 ring-2 ring-purple-500/30 scale-105"
-                    : style
-                    ? `${style.bg} ${style.text} ${style.border} border hover:shadow-sm`
-                    : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                {cat !== "All" && style && <span className={`w-2 h-2 rounded-full ${style.dot}`} />}
-                <span>{cat}</span>
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setIsAddCategoryModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-dashed border-purple-200 dark:border-purple-800 transition-colors"
-          >
-            <Plus size={15} />
-            <span>Add New</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Add Category Modal */}
-      {isAddCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Add New Category
-              </h3>
-              <button
-                onClick={() => setIsAddCategoryModalOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newCategoryName.trim()) handleAddCategory();
-              }}
-              placeholder="Category Name (e.g. Design)"
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl mb-6 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-sm"
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsAddCategoryModalOpen(false)}
-                className="flex-1 py-3 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddCategory}
-                disabled={addingCategory || !newCategoryName.trim()}
-                className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all disabled:opacity-50 text-sm shadow-lg shadow-purple-500/20"
-              >
-                {addingCategory ? "Adding..." : "Add Category"}
-              </button>
-            </div>
+      {/* Categories Bar - only show when user has custom categories */}
+      {categories.length > 1 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+              <Filter size={15} />
+              Filter by Category
+            </h3>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {categories.map((cat) => {
+              const isActive = selectedCategory === cat;
+              const style = cat === "All" ? null : getCategoryStyle(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ${
+                    isActive
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25 ring-2 ring-purple-500/30 scale-105"
+                      : style
+                        ? `${style.bg} ${style.text} ${style.border} border hover:shadow-sm`
+                        : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {cat !== "All" && style && (
+                    <span className={`w-2 h-2 rounded-full ${style.dot}`} />
+                  )}
+                  <span>{cat}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1064,8 +1103,12 @@ export default function TasksPage() {
                 <Check size={18} />
               </div>
               <div>
-                <span className="font-bold text-base">{selectedTaskIds.size}</span>
-                <span className="text-white/80 text-sm ml-1.5">task{selectedTaskIds.size > 1 ? "s" : ""} selected</span>
+                <span className="font-bold text-base">
+                  {selectedTaskIds.size}
+                </span>
+                <span className="text-white/80 text-sm ml-1.5">
+                  task{selectedTaskIds.size > 1 ? "s" : ""} selected
+                </span>
               </div>
             </div>
             <div className="relative flex-wrap flex items-center gap-2">
@@ -1117,24 +1160,31 @@ export default function TasksPage() {
             <label className="flex items-center gap-2.5 text-sm text-gray-500 dark:text-gray-400 cursor-pointer group">
               <div
                 className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                  selectedTaskIds.size === filteredAndSortedTasks.length && filteredAndSortedTasks.length > 0
+                  selectedTaskIds.size === filteredAndSortedTasks.length &&
+                  filteredAndSortedTasks.length > 0
                     ? "bg-purple-600 border-purple-600"
                     : "border-gray-300 dark:border-gray-600 group-hover:border-purple-400"
                 }`}
                 onClick={selectAllTasks}
               >
-                {selectedTaskIds.size === filteredAndSortedTasks.length && filteredAndSortedTasks.length > 0 && (
-                  <Check size={13} className="text-white" />
-                )}
+                {selectedTaskIds.size === filteredAndSortedTasks.length &&
+                  filteredAndSortedTasks.length > 0 && (
+                    <Check size={13} className="text-white" />
+                  )}
               </div>
-              <span className="font-medium cursor-pointer select-none" onClick={selectAllTasks}>
-                {selectedTaskIds.size === filteredAndSortedTasks.length && filteredAndSortedTasks.length > 0
+              <span
+                className="font-medium cursor-pointer select-none"
+                onClick={selectAllTasks}
+              >
+                {selectedTaskIds.size === filteredAndSortedTasks.length &&
+                filteredAndSortedTasks.length > 0
                   ? "Deselect All"
                   : "Select All"}
               </span>
             </label>
             <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-              Showing {filteredAndSortedTasks.length} of {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+              Showing {filteredAndSortedTasks.length} of {tasks.length} task
+              {tasks.length !== 1 ? "s" : ""}
             </span>
           </div>
         )}
@@ -1142,24 +1192,32 @@ export default function TasksPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
             <Loader2 className="w-10 h-10 animate-spin text-purple-600 mb-4" />
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Loading tasks...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+              Loading tasks...
+            </p>
           </div>
         ) : filteredAndSortedTasks.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
             <div className="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-full flex items-center justify-center mx-auto mb-5 border border-gray-100 dark:border-gray-800">
-              {searchQuery || statusFilter !== "all" || selectedCategory !== "All" ? (
+              {searchQuery ||
+              statusFilter !== "all" ||
+              selectedCategory !== "All" ? (
                 <Filter className="w-9 h-9 text-gray-400" />
               ) : (
                 <CalendarIcon className="w-9 h-9 text-gray-400" />
               )}
             </div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1.5">
-              {searchQuery || statusFilter !== "all" || selectedCategory !== "All"
+              {searchQuery ||
+              statusFilter !== "all" ||
+              selectedCategory !== "All"
                 ? "No matching tasks"
                 : "No tasks for this day"}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
-              {searchQuery || statusFilter !== "all" || selectedCategory !== "All"
+              {searchQuery ||
+              statusFilter !== "all" ||
+              selectedCategory !== "All"
                 ? "Try adjusting your search or filters to find what you're looking for."
                 : "Start your day right by adding your first task and stay organized!"}
             </p>
@@ -1171,7 +1229,9 @@ export default function TasksPage() {
                 <Plus size={17} />
                 <span>Create Task</span>
               </Link>
-              {(searchQuery || statusFilter !== "all" || selectedCategory !== "All") && (
+              {(searchQuery ||
+                statusFilter !== "all" ||
+                selectedCategory !== "All") && (
                 <button
                   onClick={() => {
                     setSearchQuery("");
@@ -1202,8 +1262,8 @@ export default function TasksPage() {
                     isSelected
                       ? "border-purple-400 dark:border-purple-600 ring-4 ring-purple-100 dark:ring-purple-900/30 shadow-lg shadow-purple-500/10"
                       : task.status === "completed"
-                      ? "border-gray-100 dark:border-gray-800 opacity-70"
-                      : "border-gray-100 dark:border-gray-800 hover:border-purple-200 dark:hover:border-purple-800 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/20 hover:-translate-y-0.5"
+                        ? "border-gray-100 dark:border-gray-800 opacity-70"
+                        : "border-gray-100 dark:border-gray-800 hover:border-purple-200 dark:hover:border-purple-800 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/20 hover:-translate-y-0.5"
                   }`}
                 >
                   {/* Selection Checkbox */}
@@ -1227,15 +1287,18 @@ export default function TasksPage() {
                       task.status === "completed"
                         ? "text-green-500"
                         : task.status === "ongoing"
-                        ? "text-blue-500"
-                        : "text-gray-300 hover:text-purple-500"
+                          ? "text-blue-500"
+                          : "text-gray-300 hover:text-purple-500"
                     }`}
                     title={`Click to change status (current: ${statusStyle.label})`}
                   >
                     {task.status === "completed" ? (
                       <CheckCircle2 size={25} className="fill-current" />
                     ) : task.status === "ongoing" ? (
-                      <PlayCircle size={25} className="fill-current fill-opacity-20" />
+                      <PlayCircle
+                        size={25}
+                        className="fill-current fill-opacity-20"
+                      />
                     ) : (
                       <Circle size={25} />
                     )}
@@ -1258,7 +1321,9 @@ export default function TasksPage() {
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium border ${categoryStyle.bg} ${categoryStyle.text} ${categoryStyle.border}`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${categoryStyle.dot}`} />
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${categoryStyle.dot}`}
+                          />
                           {task.category || "Work"}
                         </span>
                         {/* Status Badge */}
@@ -1282,7 +1347,9 @@ export default function TasksPage() {
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${priorityStyle.bg} ${priorityStyle.text} ${priorityStyle.border} hover:ring-2 hover:${priorityStyle.ring}`}
                           title="Change priority"
                         >
-                          <span className={`w-2 h-2 rounded-full ${priorityStyle.dot}`} />
+                          <span
+                            className={`w-2 h-2 rounded-full ${priorityStyle.dot}`}
+                          />
                           {priorityStyle.label}
                         </button>
 
@@ -1294,16 +1361,22 @@ export default function TasksPage() {
                                 return (
                                   <button
                                     key={p}
-                                    onClick={() => updateTaskPriority(task.id, p)}
+                                    onClick={() =>
+                                      updateTaskPriority(task.id, p)
+                                    }
                                     className={`flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg transition-colors ${
                                       task.priority === p
                                         ? ps.bg + " " + ps.text + " font-medium"
                                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                                     }`}
                                   >
-                                    <span className={`w-2.5 h-2.5 rounded-full ${ps.dot}`} />
+                                    <span
+                                      className={`w-2.5 h-2.5 rounded-full ${ps.dot}`}
+                                    />
                                     {ps.label} Priority
-                                    {task.priority === p && <Check size={14} className="ml-auto" />}
+                                    {task.priority === p && (
+                                      <Check size={14} className="ml-auto" />
+                                    )}
                                   </button>
                                 );
                               })}
@@ -1333,7 +1406,9 @@ export default function TasksPage() {
                       {task.reasoning && (
                         <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/15 px-2.5 py-1 rounded-lg border border-purple-100 dark:border-purple-900/30 max-w-full">
                           <Sparkles size={12} className="flex-shrink-0" />
-                          <span className="text-xs italic truncate">{task.reasoning}</span>
+                          <span className="text-xs italic truncate">
+                            {task.reasoning}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1378,7 +1453,14 @@ export default function TasksPage() {
                           <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                             Change Status
                           </div>
-                          {(["pending", "ongoing", "completed", "cancelled"] as const).map((s) => {
+                          {(
+                            [
+                              "pending",
+                              "ongoing",
+                              "completed",
+                              "cancelled",
+                            ] as const
+                          ).map((s) => {
                             const ss = getStatusStyle(s);
                             const SI = ss.icon;
                             return (
@@ -1391,7 +1473,12 @@ export default function TasksPage() {
                                     : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                 }`}
                               >
-                                <SI size={15} className={task.status === s ? "" : "text-gray-400"} />
+                                <SI
+                                  size={15}
+                                  className={
+                                    task.status === s ? "" : "text-gray-400"
+                                  }
+                                />
                                 {ss.label}
                               </button>
                             );

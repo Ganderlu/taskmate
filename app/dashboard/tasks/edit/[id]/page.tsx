@@ -529,9 +529,6 @@ export default function EditTaskPage({ params }: { params: Promise<{ id: string 
                 />
                 <div className="absolute bottom-3 right-4 text-xs font-medium text-gray-400 dark:text-gray-500 pointer-events-none bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded-lg">
                   {description.length} characters
-                </div>
-              </div>
-            </div>
 
             {/* Action Buttons */}
             <div className="lg:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-8 border-t border-gray-200/50 dark:border-gray-700/50 mt-2">

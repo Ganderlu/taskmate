@@ -11,7 +11,7 @@ export default function DateSelector({ selectedDate, onChange }) {
 
   const generateDays = (offsetWeeks = 0) => {
     const today = dayjs();
-    const startFrom = today.add(offsetWeeks * 7, "day").subtract(3, "day");
+    const startFrom = today.add(offsetWeeks * 7, "day").subtract(2, "day");
     const twoWeeks = [];
 
     for (let i = 0; i < 14; i++) {
@@ -63,61 +63,70 @@ export default function DateSelector({ selectedDate, onChange }) {
   const isTodaySelected = dayjs(selectedDate).isSame(today, "day");
 
   return (
-    <div className="space-y-4">
-      {/* Header with Navigation */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center">
-            <CalendarIcon size={18} className="text-purple-600 dark:text-purple-400" />
+    <div className="space-y-3 sm:space-y-4">
+      {/* Header - Mobile optimized */}
+      <div className="flex items-center justify-between gap-2 sm:gap-0 sm:px-1">
+        {/* Left: Month + small icon - MOBILE: compact row */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-violet-500/15 to-indigo-500/15 dark:from-violet-500/20 dark:to-indigo-500/20 flex items-center justify-center shrink-0">
+            <CalendarIcon
+              size={15}
+              className="sm:w-[18px] sm:h-[18px] text-violet-600 dark:text-violet-400"
+            />
           </div>
-          <div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
-              {currentMonth}
+          <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2 leading-tight">
+            <h3 className="text-sm sm:text-base font-extrabold text-gray-900 dark:text-white tracking-tight">
+              {currentMonth.split(" ")[0]}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Select a date to view tasks
+            <p className="text-[11px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500 -mt-0.5 sm:mt-0">
+              {currentMonth.split(" ")[1] || ""}
+              <span className="hidden sm:inline"> — Select a date</span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Right: Controls - MOBILE: compact, less padding */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Today Button */}
           <button
             onClick={goToday}
             disabled={isTodaySelected}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all mr-1 ${
+            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all shrink-0 ${
               isTodaySelected
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 cursor-default"
-                : "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20 cursor-default"
+                : "bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/30"
             }`}
           >
             Today
           </button>
 
-          <div className="flex items-center gap-0.5 bg-gray-50 dark:bg-gray-800 rounded-xl p-1">
+          {/* Arrow Nav */}
+          <div className="flex items-center gap-0 bg-gray-50 dark:bg-gray-800/60 rounded-lg sm:rounded-xl p-0.5">
             <button
               onClick={() => {
                 goPrev();
                 scrollBy(-1);
               }}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all active:scale-95"
+              className="p-1.5 sm:p-2 rounded-md sm:rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all active:scale-90"
               title="Previous week"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
-            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+            <div className="w-px h-4 sm:h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
             <button
               onClick={() => {
                 goNext();
                 scrollBy(1);
               }}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all active:scale-95"
+              className="p-1.5 sm:p-2 rounded-md sm:rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all active:scale-90"
               title="Next week"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
 
-          <div className="relative ml-1">
+          {/* Date Picker - hidden on mobile, icon only */}
+          <div className="relative hidden sm:block ml-0.5">
             <input
               type="date"
               value={selectedDate}
@@ -125,24 +134,33 @@ export default function DateSelector({ selectedDate, onChange }) {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               title="Pick specific date"
             />
-            <div className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+            <div className="px-2.5 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5">
               <CalendarIcon size={14} />
-              <span className="hidden sm:inline">Pick Date</span>
+              <span>Pick</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Days Scroll */}
+      {/* Month header line (mobile only) */}
+      <div className="flex items-center gap-2 sm:hidden">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 shrink-0">
+          {dayjs(selectedDate).format("MMM DD")}
+        </span>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent" />
+      </div>
+
+      {/* Days Scroll - Mobile optimized */}
       <div className="relative group">
         {/* Left fade */}
-        <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-white dark:from-gray-900 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-10 bg-gradient-to-r from-white dark:from-gray-900 to-transparent z-10 pointer-events-none sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
         {/* Right fade */}
-        <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-gray-900 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-10 bg-gradient-to-l from-white dark:from-gray-900 to-transparent z-10 pointer-events-none sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
 
         <div
           ref={scrollContainerRef}
-          className="flex gap-2.5 overflow-x-auto py-1 px-1 scroll-smooth"
+          className="flex gap-1.5 sm:gap-2.5 overflow-x-auto py-1 px-1 scroll-smooth snap-x snap-mandatory"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -164,62 +182,78 @@ export default function DateSelector({ selectedDate, onChange }) {
             const isPast = dayjs(d.date).isBefore(today, "day") && !d.isToday;
 
             return (
-              <div key={`${d.date}-${idx}`} className="flex flex-col">
+              <div
+                key={`${d.date}-${idx}`}
+                className="flex flex-col snap-center"
+              >
                 {d.isFirstOfMonth && idx > 0 && (
-                  <div className="flex items-center justify-center -mt-0.5 mb-1.5">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                      {d.month} {d.year.slice(-2)}
+                  <div className="flex items-center justify-center -mt-0.5 mb-1">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                      {d.month.slice(0, 3)} {d.year.slice(-2)}
                     </span>
                   </div>
                 )}
                 <button
                   key={idx}
                   onClick={() => onChange(d.date)}
-                  className={`relative px-2.5 py-3 rounded-2xl text-center min-w-[68px] border-2 transition-all duration-200 active:scale-95 overflow-hidden ${
+                  className={`relative px-2 sm:px-2.5 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-center min-w-[52px] sm:min-w-[68px] border transition-all duration-200 active:scale-92 overflow-hidden ${
                     isSelected
-                      ? "bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-600 text-white shadow-xl shadow-purple-500/30 scale-105 border-transparent"
+                      ? "bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-violet-500/30 scale-[1.02] border-transparent"
                       : d.isToday
-                      ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-purple-400 dark:border-purple-600 shadow-md shadow-purple-500/10 hover:shadow-lg hover:shadow-purple-500/20"
+                      ? "bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-violet-400/60 dark:border-violet-500/50 shadow-sm shadow-violet-500/10 hover:shadow-md hover:shadow-violet-500/15"
                       : isPast
-                      ? "bg-gray-50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-500 dark:hover:text-gray-400"
-                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 hover:shadow-md hover:shadow-gray-200/50 dark:hover:shadow-black/20 hover:-translate-y-0.5"
+                      ? "bg-gray-50/50 dark:bg-gray-900/30 text-gray-400 dark:text-gray-500 border-transparent hover:bg-gray-100/70 dark:hover:bg-gray-800/40"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700/60 hover:border-violet-200 dark:hover:border-violet-800/50 hover:shadow-sm"
                   }`}
                 >
                   {isSelected && (
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.2),transparent_60%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.25),transparent_55%)]" />
                   )}
                   <div
-                    className={`relative text-lg font-extrabold tracking-tight ${
+                    className={`relative text-sm sm:text-lg font-extrabold tracking-tight leading-none ${
                       isSelected ? "drop-shadow-sm" : ""
                     }`}
                   >
                     {d.dayNumber}
                   </div>
                   <div
-                    className={`relative text-[11px] font-semibold mt-0.5 uppercase tracking-wide ${
+                    className={`relative text-[9px] sm:text-[11px] font-bold mt-1 uppercase tracking-[0.08em] ${
                       isSelected
-                        ? "text-white/80"
+                        ? "text-white/85"
                         : d.isToday && !isSelected
-                        ? "text-purple-600 dark:text-purple-400"
+                        ? "text-violet-600 dark:text-violet-400"
                         : ""
                     }`}
                   >
-                    {d.weekday}
+                    {d.weekday.slice(0, 2)}
                   </div>
                   {d.isToday && !isSelected && (
-                    <div className="relative flex justify-center mt-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                    <div className="relative flex justify-center mt-1">
+                      <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-violet-500" />
                     </div>
                   )}
                   {d.isToday && isSelected && (
-                    <div className="relative flex justify-center mt-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    <div className="relative flex justify-center mt-1">
+                      <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white shadow-sm" />
                     </div>
                   )}
                 </button>
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Selected date pill (mobile only) */}
+      <div className="flex items-center justify-center sm:hidden">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 border border-violet-100 dark:border-violet-900/40">
+          <CalendarIcon
+            size={12}
+            className="text-violet-600 dark:text-violet-400"
+          />
+          <span className="text-[11px] font-extrabold text-violet-700 dark:text-violet-300 tracking-wide">
+            {dayjs(selectedDate).format("dddd, MMM D")}
+          </span>
         </div>
       </div>
     </div>

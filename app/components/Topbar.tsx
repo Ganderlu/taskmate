@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Menu,
   Bell,
   Check,
   X,
@@ -33,6 +32,8 @@ import {
   Trash2,
   MoreHorizontal,
   ChevronRight,
+  CheckSquare,
+  FolderKanban,
 } from "lucide-react";
 import { useSidebar } from "@/app/dashboard/SidebarContext";
 import { auth, db, storage } from "../firebase/firebaseClient";
@@ -45,12 +46,14 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  getDocs,
   Timestamp,
 } from "firebase/firestore";
 import { updateProfile, User as FirebaseUser } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import dayjs from "dayjs";
 
 interface Invite {
@@ -76,11 +79,11 @@ const PAGE_BREADCRUMBS: Record<string, { label: string; icon: any }> = {
   "/dashboard/teams": { label: "Teams", icon: Users },
   "/dashboard/teams/edit": { label: "Permissions", icon: CheckCircle2 },
   "/dashboard/team": { label: "Team Workspace", icon: Users },
-  "/dashboard/projects": { label: "Projects", icon: Briefcase },
   "/dashboard/notifications": { label: "Notifications", icon: Bell },
   "/dashboard/storage": { label: "Storage", icon: FileText },
   "/dashboard/invite": { label: "Invite", icon: Mail },
   "/dashboard/settings": { label: "Settings", icon: SettingsIcon },
+  "/dashboard/privacy": { label: "Privacy", icon: MessageCircle },
 };
 
 function getGreeting() {
@@ -96,13 +99,13 @@ export default function Topbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { openSidebar, collapsed, toggleCollapsed } = useSidebar();
+  const { theme, setTheme } = useTheme();
 
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [declining, setDeclining] = useState<string | null>(null);
 
-  const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // User state
@@ -114,7 +117,10 @@ export default function Topbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const invitesRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -125,18 +131,12 @@ export default function Topbar() {
   /* ---------- Theme (mount first to prevent SSR hydration mismatch) ---------- */
   useEffect(() => {
     setMounted(true);
-    const isDark = localStorage.getItem("theme") === "dark";
-    setDarkMode(isDark);
-    document.documentElement.classList.toggle("dark", isDark);
   }, []);
 
-  const resolvedDarkMode = mounted ? darkMode : false;
+  const resolvedTheme = mounted ? theme : "light";
 
   const toggleDark = () => {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    document.documentElement.classList.toggle("dark", newMode);
-    localStorage.setItem("theme", newMode ? "dark" : "light");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   /* ---------- Auth + invites listener ---------- */
@@ -210,9 +210,200 @@ export default function Topbar() {
       ) {
         setShowProfileMenu(false);
       }
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  /* ---------- Real Search: tasks + teams + categories ---------- */
+  useEffect(() => {
+    if (!searchQuery.trim() || !user) {
+      setSearchResults([]);
+      return;
+    }
+
+    const q = searchQuery.trim().toLowerCase();
+    setSearching(true);
+
+    const doSearch = async () => {
+      const results: any[] = [];
+      const userId = user.uid;
+
+      // 1. Search tasks
+      try {
+        const today = new Date();
+        const tasksQuery = query(
+          collection(db, "tasks"),
+          where("userId", "==", userId),
+          where("deleted", "==", false),
+        );
+        const tasksSnap = await getDocs(tasksQuery);
+        tasksSnap.docs.forEach((d) => {
+          const data = d.data();
+          const title = (data.title || "").toLowerCase();
+          const desc = (data.description || "").toLowerCase();
+          if (title.includes(q) || desc.includes(q)) {
+            let prio = 0;
+            if (title.startsWith(q)) prio = 3;
+            else if (title.includes(q)) prio = 2;
+            else if (desc.includes(q)) prio = 1;
+            results.push({
+              id: d.id,
+              type: "task",
+              title: data.title || "Untitled",
+              subtitle: data.description
+                ? data.description.slice(0, 70)
+                : dayjs(data.dueDate || data.createdAt).format("MMM D, YYYY"),
+              href: data.dueDate
+                ? `/dashboard/tasks?date=${encodeURIComponent(data.dueDate)}`
+                : "/dashboard/tasks",
+              priority: prio,
+              badge:
+                data.status === "completed"
+                  ? "Completed"
+                  : data.status === "ongoing"
+                    ? "Ongoing"
+                    : "Pending",
+              badgeColor:
+                data.status === "completed"
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  : data.status === "ongoing"
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+            });
+          }
+        });
+      } catch (e) {
+        // silent
+      }
+
+      // 2. Search categories (custom ones user added)
+      try {
+        const catQuery = query(
+          collection(db, "categories"),
+          where("userId", "==", userId),
+        );
+        const catSnap = await getDocs(catQuery);
+        catSnap.docs.forEach((d) => {
+          const name = (d.data().name || "").toLowerCase();
+          if (name.includes(q)) {
+            results.push({
+              id: d.id,
+              type: "category",
+              title: d.data().name,
+              subtitle: "Filter tasks by this category",
+              href: "/dashboard/tasks",
+              priority: name.startsWith(q) ? 3 : 1,
+              badge: "Category",
+              badgeColor:
+                "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+            });
+          }
+        });
+      } catch (e) {
+        // silent
+      }
+
+      // 3. Search teams (where user is member/owner)
+      try {
+        const teamsQuery = query(
+          collection(db, "teams"),
+          where("ownerId", "==", userId),
+        );
+        const teamsSnap = await getDocs(teamsQuery);
+        teamsSnap.docs.forEach((d) => {
+          const name = (d.data().name || "").toLowerCase();
+          if (name.includes(q)) {
+            results.push({
+              id: d.id,
+              type: "team",
+              title: d.data().name,
+              subtitle: `${d.data().memberCount || 1} member${
+                (d.data().memberCount || 1) !== 1 ? "s" : ""
+              }`,
+              href: "/dashboard/teams",
+              priority: name.startsWith(q) ? 3 : 1,
+              badge: "Team",
+              badgeColor:
+                "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+            });
+          }
+        });
+
+        // Also where user is a member via team_members
+        const membersQuery = query(
+          collection(db, "team_members"),
+          where("userId", "==", userId),
+        );
+        const membersSnap = await getDocs(membersQuery);
+        const teamIds = membersSnap.docs
+          .map((d) => d.data().teamId)
+          .filter(Boolean);
+        for (const teamId of teamIds) {
+          try {
+            const td = await getDoc(doc(db, "teams", teamId));
+            if (td.exists()) {
+              const data = td.data();
+              const name = (data.name || "").toLowerCase();
+              if (name.includes(q) && !results.find((r) => r.id === teamId)) {
+                results.push({
+                  id: teamId,
+                  type: "team",
+                  title: data.name,
+                  subtitle: `${data.memberCount || 1} member${
+                    (data.memberCount || 1) !== 1 ? "s" : ""
+                  }`,
+                  href: "/dashboard/teams",
+                  priority: name.startsWith(q) ? 3 : 1,
+                  badge: "Team",
+                  badgeColor:
+                    "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+                });
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      } catch (e) {
+        // silent
+      }
+
+      // Sort by priority desc, take top 8
+      results.sort((a, b) => b.priority - a.priority);
+      setSearchResults(results.slice(0, 8));
+      setSearching(false);
+    };
+
+    const timeoutId = setTimeout(doSearch, 200);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, user]);
+
+  // ⌘K / Ctrl+K global focus
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchFocused(true);
+        const input = document.getElementById(
+          "topbar-search-input",
+        ) as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }
+      if (e.key === "Escape") {
+        setSearchFocused(false);
+        setShowInvites(false);
+        setShowProfileMenu(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   /* ---------- Invite actions ---------- */
@@ -282,15 +473,6 @@ export default function Topbar() {
     <header className="sticky top-0 z-30 flex items-center gap-3 px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/70 dark:border-gray-800/70 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
       {/* ============= LEFT: Collapse button + Brand + Breadcrumbs ============= */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Mobile menu */}
-        <button
-          onClick={openSidebar}
-          className="p-2 -ml-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors lg:hidden"
-          aria-label="Open menu"
-        >
-          <Menu size={20} />
-        </button>
-
         {/* Desktop collapse toggle */}
         <button
           onClick={toggleCollapsed}
@@ -331,9 +513,9 @@ export default function Topbar() {
         </div>
       </div>
 
-      {/* ============= CENTER: Global Search (the CIRCLED area) ============= */}
+      {/* ============= CENTER: Global Search ============= */}
       <div className="flex-1 min-w-0 flex items-center justify-center">
-        <div className="w-full max-w-2xl relative">
+        <div className="w-full max-w-2xl relative" ref={searchRef}>
           {/* Search Container */}
           <div
             className={`group relative flex items-center transition-all duration-300 rounded-2xl border ${
@@ -344,22 +526,34 @@ export default function Topbar() {
           >
             <Search
               size={17}
-              className={`absolute left-4 transition-colors ${searchFocused ? "text-violet-500" : "text-gray-400 group-hover:text-gray-500"}`}
+              className={`absolute left-4 transition-colors ${
+                searchFocused
+                  ? "text-violet-500"
+                  : "text-gray-400 group-hover:text-gray-500"
+              }`}
             />
             <input
+              id="topbar-search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="Search tasks, projects, teams, or press ⌘K for quick actions..."
-              className="w-full pl-11 pr-28 py-2.5 bg-transparent outline-none text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400/80"
+              onBlur={() => {
+                // Delay so result clicks register before blur
+                setTimeout(() => setSearchFocused(false), 150);
+              }}
+              placeholder={
+                mounted && window.innerWidth < 640
+                  ? "Search tasks, teams…"
+                  : "Search tasks, teams, categories… or ⌘K"
+              }
+              className="w-full pl-11 sm:pl-11 pr-16 sm:pr-28 py-2.5 bg-transparent outline-none text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400/80"
             />
 
             {/* Shortcuts & voice */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
               <button
-                className="hidden md:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700/60 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 transition-colors"
+                className="hidden md:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700/60 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-400 transition-colors active:scale-95"
                 title="Voice search"
               >
                 <Mic size={12} />
@@ -368,8 +562,138 @@ export default function Topbar() {
                 <Command size={10} className="text-gray-400" />
                 <span className="text-[10px] font-bold text-gray-400">K</span>
               </div>
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSearchResults([]);
+                    document.getElementById("topbar-search-input")?.focus();
+                  }}
+                  className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors active:scale-95"
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Search Results Dropdown */}
+          {searchFocused && (searchQuery.trim() || searching) && (
+            <div className="absolute left-0 right-0 top-[calc(100%+10px)] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-150">
+              {/* Header */}
+              <div className="px-4 py-3 bg-gradient-to-r from-violet-50/80 to-transparent dark:from-violet-900/20 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Search size={14} className="text-violet-500" />
+                    {searching ? "Searching…" : "Results"}
+                  </h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    {searching
+                      ? "Matching your query…"
+                      : searchResults.length === 0
+                        ? `No results for "${searchQuery}"`
+                        : `${searchResults.length} result${
+                            searchResults.length !== 1 ? "s" : ""
+                          } found`}
+                  </p>
+                </div>
+                {searching && (
+                  <Loader2 className="animate-spin w-4 h-4 text-violet-500" />
+                )}
+              </div>
+
+              <div className="max-h-[380px] overflow-y-auto">
+                {!searching && searchResults.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                      <Search
+                        size={22}
+                        className="text-gray-400 dark:text-gray-500"
+                      />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      Nothing here yet
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Try different keywords or clear filters
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {searchResults.map((r) => (
+                      <Link
+                        key={`${r.type}-${r.id}`}
+                        href={r.href}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors group"
+                      >
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            r.type === "task"
+                              ? "bg-amber-50 dark:bg-amber-900/25 text-amber-600 dark:text-amber-400"
+                              : r.type === "category"
+                                ? "bg-violet-50 dark:bg-violet-900/25 text-violet-600 dark:text-violet-400"
+                                : "bg-sky-50 dark:bg-sky-900/25 text-sky-600 dark:text-sky-400"
+                          }`}
+                        >
+                          {r.type === "task" ? (
+                            <CheckSquare size={17} />
+                          ) : r.type === "category" ? (
+                            <FolderKanban size={17} />
+                          ) : (
+                            <Users size={17} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                              {r.title}
+                            </p>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${r.badgeColor}`}
+                            >
+                              {r.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            {r.subtitle}
+                          </p>
+                        </div>
+                        <ChevronRight
+                          size={14}
+                          className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer tips */}
+              <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/30 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                      <Search size={8} />
+                    </kbd>
+                    to open
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                      Esc
+                    </kbd>
+                    close
+                  </span>
+                </div>
+                <Link
+                  href="/dashboard/tasks"
+                  className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:underline"
+                >
+                  See all tasks →
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Quick chips */}
           <div className="hidden md:flex items-center gap-2 mt-2 pl-1 -mb-1">
@@ -430,23 +754,25 @@ export default function Topbar() {
           <span className="hidden xl:inline">New Task</span>
         </Link>
 
-        {/* Theme toggle (uses resolvedDarkMode to prevent SSR hydration mismatch) */}
+        {/* Theme toggle (uses resolvedTheme to sync with Sidebar + next-themes) */}
         <button
           onClick={toggleDark}
-          className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all group"
+          className="p-2 rounded-lg sm:p-2.5 sm:rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all group active:scale-90"
           title={
-            resolvedDarkMode ? "Switch to light mode" : "Switch to dark mode"
+            resolvedTheme === "dark"
+              ? "Switch to light mode"
+              : "Switch to dark mode"
           }
         >
-          {resolvedDarkMode ? (
+          {resolvedTheme === "dark" ? (
             <Sun
-              size={17}
-              className="group-hover:rotate-12 transition-transform"
+              size={16}
+              className="sm:w-[17px] sm:h-[17px] group-hover:rotate-12 transition-transform"
             />
           ) : (
             <Moon
-              size={17}
-              className="group-hover:-rotate-12 transition-transform"
+              size={16}
+              className="sm:w-[17px] sm:h-[17px] group-hover:-rotate-12 transition-transform"
             />
           )}
         </button>
@@ -458,7 +784,7 @@ export default function Topbar() {
               setShowInvites((s) => !s);
               setShowProfileMenu(false);
             }}
-            className="p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all relative"
+            className="p-2 rounded-lg sm:p-2.5 sm:rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all relative active:scale-90"
             aria-label="Notifications"
           >
             <Bell size={18} />
@@ -725,28 +1051,28 @@ export default function Topbar() {
                   label="My Dashboard"
                 />
                 <MenuLink
-                  href="/dashboard/projects"
-                  icon={FileText}
-                  label="Projects & Files"
-                />
-                <MenuLink
                   href="/dashboard/notifications"
                   icon={Bell}
                   label="Notifications"
                   badge={totalBadges > 0 ? totalBadges : undefined}
                 />
                 <MenuLink
+                  href="/dashboard/privacy"
+                  icon={MessageCircle}
+                  label="Privacy Center"
+                />
+                <MenuLink
                   href="/dashboard/storage"
-                  icon={Users}
+                  icon={FileText}
                   label="Storage & Usage"
                 />
               </div>
 
-              <div className="h-px mx-3 bg-gray-100 dark:bg-gray-800 my-1" />
+              <div className="h-px mx-3 bg-gray-100 dark:border-gray-800 my-1" />
 
               <div className="p-2 space-y-0.5">
                 <MenuLink
-                  href="/dashboard"
+                  href="/dashboard/settings"
                   icon={SettingsIcon}
                   label="Account Settings"
                 />
